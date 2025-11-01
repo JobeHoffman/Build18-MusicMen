@@ -1,0 +1,3 @@
+# Project Python dependencies
+# Pin a minimum numpy version; adjust if you need a specific release.
+numpy>=1.25
