@@ -32,26 +32,6 @@ AudioConnection patchCord11(mixer_effects, 0, mixer_drywet, 1); // Wet signal
 AudioConnection patchCord12(mixer_drywet, 0, i2s_out, 0);    // Output left
 AudioConnection patchCord13(mixer_drywet, 0, i2s_out, 1);    // Output right
 
-
-// Setting Pins Encoder
-pinMode(0, INPUT_PULLUP);
-pinMode(1, INPUT_PULLUP);
-
-// Rotary encoder
-Encoder myEncoder(D1, D2); // rotary encoder code.            
-long encoderPos = 0;
-long lastEncoderPos = 0;
-
-// Setting Pins Potentiometers
-pinMode(15, INPUT);
-pinMode(16, INPUT);
-pinMode(17, INPUT);
-
-// Potentiometer pins
-const int POT1 = A1;
-const int POT2 = A2;
-const int POT3 = A3;
-
 // Effect selection
 enum Effect {
   AUTOWAH = 0,
@@ -68,7 +48,7 @@ float currentFreq = 500.0;
 float targetFreq = 500.0;
 const float MIN_FREQ = 200.0;
 const float MAX_FREQ = 2500.0;
-const float SMOOTHING = 0.85;
+const float SMOOTHING = 0.3;
 float envelope = 0.0;
 float attack = 0.01;
 float release = 0.1;
@@ -81,10 +61,14 @@ void setup() {
   Serial.begin(9600);
   
   AudioMemory(20);
-  
+
+  // Setting Pins Encoder
+  pinMode(0, INPUT_PULLUP);
+  pinMode(1, INPUT_PULLUP);
+
   // Enable audio shield
   audioShield.enable();
-  audioShield.inputSelect(MYINPUT_LINEIN);
+  audioShield.inputSelect(AUDIO_INPUT_LINEIN);
   audioShield.volume(0.7);
   audioShield.lineInLevel(5);
   audioShield.lineOutLevel(13);
@@ -94,10 +78,21 @@ void setup() {
   filter.resonance(2.0);
   filter.octaveControl(1.0);
   
+  // Initialize chorus
+  chorus.voices(2);
+  
+  // Initialize freeverb
+  freeverb.roomsize(0.5);
+  freeverb.damping(0.5);
+  
   // Initialize all effects mixers to off
   for (int i = 0; i < 4; i++) {
     mixer_effects.gain(i, 0);
   }
+  
+  // Initialize dry/wet mixer
+  mixer_drywet.gain(0, 0.5);  // Dry
+  mixer_drywet.gain(1, 0.5);  // Wet
   
   // Set initial effect
   setEffect(AUTOWAH);
@@ -105,6 +100,16 @@ void setup() {
   Serial.println("Multi-Effect Pedal Ready");
   Serial.println("Effect: Auto-Wah");
 }
+
+// Potentiometer pins
+const int POT1 = 15;
+const int POT2 = 16;
+const int POT3 = 17;
+
+// Rotary encoder
+Encoder myEncoder(0, 1);
+long encoderPos = 0;
+long lastEncoderPos = 0;
 
 void loop() {
   unsigned long currentTime = millis();
@@ -175,8 +180,9 @@ void setEffect(Effect effect) {
 
 void updateAutoWah(float sensitivity, float qValue, float mixValue) {
   // Update envelope follower parameters based on sensitivity
-  attack = 0.005 + (sensitivity * 0.045);
-  release = 0.05 + (sensitivity * 0.45);
+  // Higher sensitivity = faster attack/release
+  attack = 0.005 + (sensitivity * 0.095);   // 0.005 to 0.1
+  release = 0.05 + (sensitivity * 0.45);    // 0.05 to 0.5
   
   // Read peak from audio input
   if (peak.available()) {
@@ -195,7 +201,7 @@ void updateAutoWah(float sensitivity, float qValue, float mixValue) {
     targetFreq = constrain(targetFreq, MIN_FREQ, MAX_FREQ);
   }
   
-  // Smooth frequency changes
+  // Smooth frequency changes (reduced smoothing for faster response)
   currentFreq = (SMOOTHING * currentFreq) + ((1.0 - SMOOTHING) * targetFreq);
   filter.frequency(currentFreq);
   
@@ -208,34 +214,37 @@ void updateAutoWah(float sensitivity, float qValue, float mixValue) {
   mixer_drywet.gain(1, mixValue);         // Wet
 }
 
-void updateChorus(float voices, float toggle, float dryLevel) {
-  int voicesVal = static_cast<int>(10 * voices);
-  chorus.voices(voicesVal);
+void updateChorus(float depth, float rate, float mixValue) {
+  // Depth controls number of voices (1-4)
+  int numVoices = 1 + (int)(depth * 3);
+  chorus.voices(numVoices);
   
   // Dry/wet mix
-  mixer_drywet.gain(0, dryLevel);  // Dry
-  mixer_drywet.gain(1, 0.5);        // Wet
+  mixer_drywet.gain(0, 1.0 - mixValue);  // Dry
+  mixer_drywet.gain(1, mixValue);         // Wet
 }
 
-void updateReverb(float roomsize, float damping, float dryLevel) {
+void updateReverb(float roomsize, float damping, float mixValue) {
+  // Roomsize: 0.0 to 1.0
   freeverb.roomsize(roomsize);
+  
+  // Damping: 0.0 to 1.0
   freeverb.damping(damping);
   
   // Dry/wet mix
-  mixer_drywet.gain(0, dryLevel);  // Dry
-  mixer_drywet.gain(1, 0.5);        // Wet
+  mixer_drywet.gain(0, 1.0 - mixValue);  // Dry
+  mixer_drywet.gain(1, mixValue);         // Wet
 }
 
-void updateDelay(float delayTime, float toggle, float dryLevel) {
-  int delayVal = (int)(delayTime * 2000);  // 0-2000ms
-  delay_effect.delay(0, delayVal);
+void updateDelay(float delayTime, float feedback, float mixValue) {
+  int delayMs = (int)(delayTime * 500);
+  delay_effect.delay(0, delayMs);
   
-  // Toggle effect on/off
-  if (toggle < 0.5) {
-    delay_effect.disable(0);
-  }
+  // Feedback: 0.0 to 0.9 (values too high cause runaway feedback)
+  float feedbackAmt = feedback * 0.9;
+
   
   // Dry/wet mix
-  mixer_drywet.gain(0, dryLevel);  // Dry
-  mixer_drywet.gain(1, 0.5);        // Wet
-}[
+  mixer_drywet.gain(0, 1.0 - mixValue);  // Dry
+  mixer_drywet.gain(1, mixValue);         // Wet
+}
