@@ -32,10 +32,20 @@ AudioConnection patchCord11(mixer_effects, 0, mixer_drywet, 1); // Wet signal
 AudioConnection patchCord12(mixer_drywet, 0, i2s_out, 0);    // Output left
 AudioConnection patchCord13(mixer_drywet, 0, i2s_out, 1);    // Output right
 
+
+// Setting Pins Encoder
+pinMode(0, INPUT_PULLUP);
+pinMode(1, INPUT_PULLUP);
+
 // Rotary encoder
 Encoder myEncoder(D1, D2); // rotary encoder code.            
 long encoderPos = 0;
 long lastEncoderPos = 0;
+
+// Setting Pins Potentiometers
+pinMode(15, INPUT);
+pinMode(16, INPUT);
+pinMode(17, INPUT);
 
 // Potentiometer pins
 const int POT1 = A1;
