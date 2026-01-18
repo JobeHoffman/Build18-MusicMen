@@ -71,7 +71,10 @@ void setup() {
   // I2C LCD intialization
   LiquidCrystal lcd(0);
   lcd.begin(16, 2);
-  lcd.print("AUTO WAH        1");
+  lcd.setCursor(4, 1);
+  lcd.print("AUTOWAH");
+  lcd.setCursor(4, 2);
+  lcd.print("EFFECT 1");
 
   // Enable audio shield
   audioShield.enable();
