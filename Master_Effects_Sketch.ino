@@ -4,6 +4,8 @@
 #include <SD.h>
 #include <SerialFlash.h>
 #include <Encoder.h>
+#include <LiquidCrystal.h>
+#include <Adafruit_LiquidCrystal.h>
 
 // Audio components
 AudioInputI2S            i2s_in;
@@ -63,8 +65,13 @@ void setup() {
   AudioMemory(20);
 
   // Setting Pins Encoder
-  pinMode(0, INPUT_PULLUP);
-  pinMode(1, INPUT_PULLUP);
+  pinMode(PIND0, INPUT_PULLUP);
+  pinMode(PIND1, INPUT_PULLUP);
+
+  // I2C LCD intialization
+  LiquidCrystal lcd(0);
+  lcd.begin(16, 2);
+  lcd.print("AUTO WAH        1");
 
   // Enable audio shield
   audioShield.enable();
@@ -212,6 +219,13 @@ void updateAutoWah(float sensitivity, float qValue, float mixValue) {
   // Update dry/wet mix
   mixer_drywet.gain(0, 1.0 - mixValue);  // Dry
   mixer_drywet.gain(1, mixValue);         // Wet
+
+
+  // Update LCD
+  lcd.setCursor(4, 1);
+  lcd.print("AUTOWAH");
+  lcd.setCursor(4, 2);
+  lcd.print("EFFECT 1");
 }
 
 void updateChorus(float depth, float rate, float mixValue) {
@@ -222,6 +236,12 @@ void updateChorus(float depth, float rate, float mixValue) {
   // Dry/wet mix
   mixer_drywet.gain(0, 1.0 - mixValue);  // Dry
   mixer_drywet.gain(1, mixValue);         // Wet
+
+  // Update LCD
+  lcd.setCursor(5, 1);
+  lcd.print("CHORUS");
+  lcd.setCursor(4, 2);
+  lcd.print("EFFECT 2");
 }
 
 void updateReverb(float roomsize, float damping, float mixValue) {
@@ -234,6 +254,12 @@ void updateReverb(float roomsize, float damping, float mixValue) {
   // Dry/wet mix
   mixer_drywet.gain(0, 1.0 - mixValue);  // Dry
   mixer_drywet.gain(1, mixValue);         // Wet
+
+  // Update LCD
+  lcd.setCursor(5, 1);
+  lcd.print("REVERB");
+  lcd.setCursor(4, 2);
+  lcd.print("EFFECT 3");
 }
 
 void updateDelay(float delayTime, float feedback, float mixValue) {
@@ -247,4 +273,10 @@ void updateDelay(float delayTime, float feedback, float mixValue) {
   // Dry/wet mix
   mixer_drywet.gain(0, 1.0 - mixValue);  // Dry
   mixer_drywet.gain(1, mixValue);         // Wet
+
+  // Update LCD
+  lcd.setCursor(5, 1);
+  lcd.print("DELAY");
+  lcd.setCursor(4, 2);
+  lcd.print("EFFECT 4");
 }
